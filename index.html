@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NAPLAN Writing Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Added Compromise.js for accurate grammar/adjective parsing -->
+    <script src="https://unpkg.com/compromise"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono&display=swap');
 
@@ -936,12 +940,23 @@ persuasive: {
             const text = document.getElementById('editor').innerText.trim();
             const words = text ? text.split(/\s+/).length : 0;
             document.getElementById('word-count-display').innerText = words;
+            
             if (genre === 'narrative') {
                 const tokens = text.toLowerCase().match(/\b(\w+)\b/g) || [];
-                const count = tokens.filter(t => (t.length > 4 && ['ful', 'less', 'ous', 'ive', 'ic', 'al', 'able', 'ible', 'ish', 'y'].some(s => t.endsWith(s)))).length;
+                let count = 0;
+                
+                // Use Compromise NLP library for accurate contextual grammar parsing
+                if (typeof nlp !== 'undefined' && text) {
+                    count = nlp(text).match('#Adjective').out('array').length;
+                } else {
+                    // Fallback to basic suffix checking if the library hasn't loaded yet
+                    count = tokens.filter(t => (t.length > 4 && ['ful', 'less', 'ous', 'ive', 'ic', 'al', 'able', 'ible', 'ish', 'y'].some(s => t.endsWith(s)))).length;
+                }
+                
                 const p = Math.round((count / (tokens.length || 1)) * 100);
                 document.getElementById('adj-percent').innerText = p + "%";
             }
+            
             if (isAnalysisActive) runAnalysis();
         }
 
