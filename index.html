@@ -100,7 +100,7 @@
         .zen-focus header, .zen-focus #sidebar, .zen-focus #legend { opacity: 0.15; pointer-events: none; }
     </style>
 </head>
-<body class="dark min-h-screen flex flex-col font-sans">
+<body class="dark min-h-screen flex flex-col font-sans" onmousemove="handleInteraction()">
 
     <div id="global-tooltip" class="fixed z-[9999] w-[400px] max-w-[92vw] p-4 rounded-xl tooltip-popup pointer-events-none shadow-2xl"></div>
 
@@ -246,9 +246,15 @@
                             <span>COPY TEXT</span>
                         </button>
                     </div>
-                    <button id="export-pdf-btn" onclick="exportPDF()" class="w-full py-3 rounded-xl bg-slate-800 border border-slate-600 text-slate-300 font-bold text-sm uppercase tracking-wider hover:bg-slate-700 transition shadow-lg flex items-center justify-center gap-2">
-                        📄 EXPORT PDF
-                    </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="export-pdf-btn" onclick="exportPDF()" class="w-full py-3 rounded-xl bg-slate-800 border border-slate-600 text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-700 transition shadow-lg flex items-center justify-center gap-2">
+                            📄 EXPORT PDF
+                        </button>
+                        <!-- MATCHING TEEAL: Native link, no 'return', instant execution -->
+                        <a href="mailto:" id="email-report-btn" onclick="emailReport(this)" class="w-full py-3 rounded-xl bg-slate-800 border border-slate-600 text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-700 transition shadow-lg flex items-center justify-center gap-2 cursor-pointer" style="text-decoration: none;">
+                            ✉️ EMAIL
+                        </a>
+                    </div>
                 </div>
                 
                 <!-- Advanced Metrics Panel -->
@@ -1011,6 +1017,53 @@
             html2pdf().set(opt).from(element).save().then(() => {
                 document.body.removeChild(tempContainer);
             });
+        }
+
+        function emailReport(el) {
+            // CRITICAL FIX: Removed the prompt() completely!
+            // It was causing the browser's "trusted click window" to timeout, resulting in a page reset.
+            // Now, it instantly updates the link and opens the mail app. The student can type the email
+            // address directly into the "To:" field of their mail program.
+
+            // Guarantee fresh analysis and metrics before export
+            runAnalysis();
+            generateAdvancedMetrics();
+
+            const title = document.getElementById('prompt-display').innerText;
+            let text = document.getElementById('editor').innerText;
+            const wordCount = document.getElementById('word-count-display').innerText;
+            const metricsText = document.getElementById('metrics-container').innerText;
+
+            // mailto: links fail silently if they exceed ~2000 characters.
+            // We must truncate the essay string to guarantee the mail application opens.
+            if (text.length > 800) {
+                text = text.substring(0, 800) + "\n\n... [Student text truncated due to email size limits. Please use 'Export PDF' to view and save the complete essay.]";
+            }
+
+            let body = `NAPLAN WRITING REPORT\n`;
+            body += `Prompt: ${title}\n`;
+            body += `Word Count: ${wordCount}\n\n`;
+            
+            body += `--- STUDENT TEXT ---\n\n`;
+            body += `${text}\n\n`;
+            
+            body += `--- STYLE & FLOW METRICS ---\n\n`;
+            body += `${metricsText}\n`;
+
+            if (genre === 'narrative') {
+                const checkedBoxes = document.querySelectorAll('#devices-list input[type="checkbox"]:checked');
+                const checkedDevices = Array.from(checkedBoxes).map(cb => cb.nextElementSibling.innerText);
+                if (checkedDevices.length > 0) {
+                    body += `\nLITERARY DEVICES INCLUDED:\n${checkedDevices.join(' • ')}\n`;
+                }
+            }
+
+            const subject = encodeURIComponent(`NAPLAN Writing Report: ${title}`);
+            const mailtoBody = encodeURIComponent(body);
+            
+            // Instantly update the <a> tag's href right before the browser processes the click.
+            // Leaving the email address blank after "mailto:" lets the student type it in their app.
+            el.href = `mailto:?subject=${subject}&body=${mailtoBody}`;
         }
 
         // --- Core Logic Functions ---
